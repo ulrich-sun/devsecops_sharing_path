@@ -1,0 +1,56 @@
+PayMyBuddy has been installed successfully!
+
+Chart Version: {{ .Chart.Version }}
+App Version: {{ .Chart.AppVersion }}
+Release Name: {{ .Release.Name }}
+Namespace: {{ .Values.namespace }}
+
+1. Get the application URL:
+{{- if .Values.ingress.enabled }}
+  {{- range $host := .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}
+  {{- end }}
+{{- else if eq .Values.app.service.type "LoadBalancer" }}
+  
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+  You can watch the status by running:
+  
+  kubectl get svc {{ .Values.app.name }}-service -n {{ .Values.namespace }} --watch
+  
+  Once available, get the IP with:
+  
+  export SERVICE_IP=$(kubectl get svc {{ .Values.app.name }}-service -n {{ .Values.namespace }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "Application URL: http://$SERVICE_IP:{{ .Values.app.service.port }}"
+
+{{- else if eq .Values.app.service.type "NodePort" }}
+  
+  export NODE_PORT=$(kubectl get svc {{ .Values.app.name }}-service -n {{ .Values.namespace }} -o jsonpath='{.spec.ports[0].nodePort}')
+  export NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
+  echo "Application URL: http://$NODE_IP:$NODE_PORT"
+
+{{- else if eq .Values.app.service.type "ClusterIP" }}
+  
+  kubectl port-forward svc/{{ .Values.app.name }}-service {{ .Values.app.service.port }}:{{ .Values.app.service.port }} -n {{ .Values.namespace }}
+  echo "Application URL: http://localhost:{{ .Values.app.service.port }}"
+{{- end }}
+
+2. Check the deployment status:
+  kubectl get pods -n {{ .Values.namespace }}
+  kubectl get deployments -n {{ .Values.namespace }}
+
+3. Check the MySQL database:
+  kubectl exec -it deployment/{{ .Values.mysql.name }} -n {{ .Values.namespace }} -- mysql -u{{ .Values.mysql.database.user }} -p{{ .Values.mysql.database.password }} {{ .Values.mysql.database.name }}
+
+4. View logs:
+  # Application logs
+  kubectl logs -f deployment/{{ .Values.app.name }} -n {{ .Values.namespace }}
+  
+  # MySQL logs
+  kubectl logs -f deployment/{{ .Values.mysql.name }} -n {{ .Values.namespace }}
+
+5. Default Credentials:
+  Database: {{ .Values.mysql.database.name }}
+  Username: {{ .Values.mysql.database.user }}
+  Password: {{ .Values.mysql.database.password }}
+
+For more information, visit: {{ .Chart.Home }}

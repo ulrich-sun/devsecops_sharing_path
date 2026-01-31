@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.app.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.app.name }}
+    {{- include "paymybuddy.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+      {{- include "paymybuddy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+        {{- include "paymybuddy.selectorLabels" . | nindent 8 }}
+    spec:
+      imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+      imagePullSecrets:
+        - name: ghcr-secret
+      {{- if .Values.mysql.enabled }}
+      initContainers:
+      - name: wait-for-mysql
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z mysql-service {{ .Values.mysql.service.port }}; do echo waiting for mysql; sleep 2; done;']
+      {{- end }}
+      containers:
+      - name: {{ .Values.app.name }}
+        image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+        imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.app.service.targetPort }}
+          name: http
+        env:
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: paymybuddy-config
+              key: SPRING_DATASOURCE_URL
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: paymybuddy-config
+              key: SPRING_DATASOURCE_USERNAME
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: paymybuddy-secret
+              key: SPRING_DATASOURCE_PASSWORD
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          valueFrom:
+            configMapKeyRef:
+              name: paymybuddy-config
+              key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        {{- if .Values.app.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.app.livenessProbe.path }}
+            port: {{ .Values.app.service.targetPort }}
+          initialDelaySeconds: {{ .Values.app.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.app.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.app.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.app.livenessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.app.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.app.readinessProbe.path }}
+            port: {{ .Values.app.service.targetPort }}
+          initialDelaySeconds: {{ .Values.app.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.app.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.app.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.app.readinessProbe.failureThreshold }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.app.resources | nindent 10 }}

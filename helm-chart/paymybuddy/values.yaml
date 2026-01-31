@@ -1,0 +1,112 @@
+# Default values for paymybuddy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## Global settings
+global:
+  storageClass: "paymybuddy-storage"
+
+## Namespace configuration
+namespace: paymybuddy
+
+## Application configuration
+app:
+  name: paymybuddy
+  replicaCount: 2
+  
+  image:
+    repository: devsecops
+    tag: v1
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 8080
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  
+  livenessProbe:
+    enabled: true
+    path: /actuator/health
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  
+  readinessProbe:
+    enabled: true
+    path: /actuator/health
+    initialDelaySeconds: 30
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+## MySQL configuration
+mysql:
+  enabled: true
+  name: mysql
+  
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 3306
+  
+  persistence:
+    enabled: true
+    storageClass: "paymybuddy-storage"
+    accessMode: ReadWriteOnce
+    size: 5Gi
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  database:
+    name: db_paymybuddy
+    user: test
+    password: test
+    rootPassword: rootpassword
+
+## StorageClass configuration
+storageClass:
+  enabled: true
+  name: paymybuddy-storage
+  provisioner: kubernetes.io/no-provisioner
+  volumeBindingMode: WaitForFirstConsumer
+  reclaimPolicy: Retain
+
+## ConfigMap settings
+config:
+  springJpaHibernateDdlAuto: update
+
+## Ingress configuration (optional)
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: paymybuddy.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: paymybuddy-tls
+  #    hosts:
+  #      - paymybuddy.local

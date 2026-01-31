@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.app.name }}-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Values.app.name }}
+    {{- include "paymybuddy.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.app.service.type }}
+  ports:
+  - port: {{ .Values.app.service.port }}
+    targetPort: {{ .Values.app.service.targetPort }}
+    protocol: TCP
+    name: http
+  selector:
+    app: {{ .Values.app.name }}
+    {{- include "paymybuddy.selectorLabels" . | nindent 4 }}
